@@ -67,7 +67,7 @@ func ReadFile(path string) ([]Record, error) {
 	lineNumber := 0
 	if err := counter.ReadLines(file, func(line string) error {
 		lineNumber++
-		record, err := parseRecord(line)
+		record, err := ParseRecord(line)
 		if err != nil {
 			return fmt.Errorf("parse chunk file %q line %d: %w", path, lineNumber, err)
 		}
@@ -93,7 +93,7 @@ func SortedRecords(counts Counts) []Record {
 	return records
 }
 
-func parseRecord(line string) (Record, error) {
+func ParseRecord(line string) (Record, error) {
 	name, countText, ok := strings.Cut(line, "\t")
 	if !ok {
 		return Record{}, fmt.Errorf("expected name and count separated by tab")
