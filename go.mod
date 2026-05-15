@@ -1,1 +1,3 @@
-module name-counter
+module namefreq
+
+go 1.22
