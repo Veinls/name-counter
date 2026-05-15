@@ -58,6 +58,86 @@ func TestRunOutputsNothingForEmptyFile(t *testing.T) {
 	assertNoChunkFiles(t, tmpDir)
 }
 
+func TestRunCountsOneName(t *testing.T) {
+	tmpDir := t.TempDir()
+	inputPath := writeInput(t, tmpDir, "Alice\n")
+
+	var out bytes.Buffer
+	if err := Run(testConfig(inputPath, tmpDir, config.SortByName, "128MB"), &out); err != nil {
+		t.Fatalf("Run returned error: %v", err)
+	}
+
+	want := "Alice\t1\n"
+	if out.String() != want {
+		t.Fatalf("output = %q, want %q", out.String(), want)
+	}
+	assertNoChunkFiles(t, tmpDir)
+}
+
+func TestRunCountsRepeatedNames(t *testing.T) {
+	tmpDir := t.TempDir()
+	inputPath := writeInput(t, tmpDir, "Alice\nAlice\nAlice\n")
+
+	var out bytes.Buffer
+	if err := Run(testConfig(inputPath, tmpDir, config.SortByName, "2B"), &out); err != nil {
+		t.Fatalf("Run returned error: %v", err)
+	}
+
+	want := "Alice\t3\n"
+	if out.String() != want {
+		t.Fatalf("output = %q, want %q", out.String(), want)
+	}
+	assertNoChunkFiles(t, tmpDir)
+}
+
+func TestRunHandlesUnicodeNames(t *testing.T) {
+	tmpDir := t.TempDir()
+	inputPath := writeInput(t, tmpDir, "Алёна\nМиша\nДима\nАлёна\n")
+
+	var out bytes.Buffer
+	if err := Run(testConfig(inputPath, tmpDir, config.SortByName, "10B"), &out); err != nil {
+		t.Fatalf("Run returned error: %v", err)
+	}
+
+	want := "Алёна\t2\nДима\t1\nМиша\t1\n"
+	if out.String() != want {
+		t.Fatalf("output = %q, want %q", out.String(), want)
+	}
+	assertNoChunkFiles(t, tmpDir)
+}
+
+func TestRunTrimsNamesWithSpaces(t *testing.T) {
+	tmpDir := t.TempDir()
+	inputPath := writeInput(t, tmpDir, "  Alice  \n\tAlice\t\n Bob \n")
+
+	var out bytes.Buffer
+	if err := Run(testConfig(inputPath, tmpDir, config.SortByName, "128MB"), &out); err != nil {
+		t.Fatalf("Run returned error: %v", err)
+	}
+
+	want := "Alice\t2\nBob\t1\n"
+	if out.String() != want {
+		t.Fatalf("output = %q, want %q", out.String(), want)
+	}
+	assertNoChunkFiles(t, tmpDir)
+}
+
+func TestRunMergesMultipleChunks(t *testing.T) {
+	tmpDir := t.TempDir()
+	inputPath := writeInput(t, tmpDir, "Charlie\nAlice\nBob\nAlice\nBob\nCharlie\n")
+
+	var out bytes.Buffer
+	if err := Run(testConfig(inputPath, tmpDir, config.SortByName, "1B"), &out); err != nil {
+		t.Fatalf("Run returned error: %v", err)
+	}
+
+	want := "Alice\t2\nBob\t2\nCharlie\t2\n"
+	if out.String() != want {
+		t.Fatalf("output = %q, want %q", out.String(), want)
+	}
+	assertNoChunkFiles(t, tmpDir)
+}
+
 func TestRunReturnsInvalidInputPathError(t *testing.T) {
 	tmpDir := t.TempDir()
 	cfg := testConfig(filepath.Join(tmpDir, "missing.txt"), tmpDir, config.SortByName, "128MB")
@@ -66,6 +146,17 @@ func TestRunReturnsInvalidInputPathError(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error")
 	}
+}
+
+func TestRunReturnsInvalidSortModeError(t *testing.T) {
+	tmpDir := t.TempDir()
+	inputPath := writeInput(t, tmpDir, "Alice\n")
+
+	err := Run(testConfig(inputPath, tmpDir, "unknown", "128MB"), &bytes.Buffer{})
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	assertNoChunkFiles(t, tmpDir)
 }
 
 func TestRunCleansChunksAfterOutputError(t *testing.T) {

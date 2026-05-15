@@ -11,3 +11,4 @@
 - k-way merge;
 - слой форматирования вывода;
 - orchestration внешней агрегации.
+- end-to-end тесты и проверки edge cases.
